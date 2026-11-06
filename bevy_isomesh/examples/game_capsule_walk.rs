@@ -337,7 +337,7 @@ fn stream(
     }
 }
 
-/// Give each freshly meshed chunk a renderer and a static collider.
+/// Give each newly meshed or re-meshed chunk a renderer and a static collider.
 ///
 /// The collider is built from the same `Handle<Mesh>` the renderer draws, which
 /// is the point: a consumer hands the physics engine exactly what is on screen,
@@ -347,14 +347,15 @@ fn attach_meshes(
     mut commands: Commands,
     look: Res<Look>,
     meshes: Res<Assets<Mesh>>,
-    fresh: Query<(Entity, &ChunkMesh), Without<Mesh3d>>,
+    fresh: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>,
 ) {
     for (entity, chunk) in &fresh {
         let Some(mesh) = meshes.get(&chunk.0) else {
             continue;
         };
         // An empty chunk -- all air or all rock -- has no triangles and no
-        // collider. Skipping it is correct; trying to build one is not.
+        // collider. Skipping it is correct; trying to build one is not. A chunk
+        // an edit re-meshed to empty drops the collider its old surface had.
         let Some(collider) = Collider::trimesh_from_mesh(mesh) else {
             // `try_insert`, not `insert`, and this is not a swallowed error. The
             // streamer despawns a chunk the moment it leaves residency, and that
@@ -366,11 +367,14 @@ fn attach_meshes(
             // `game_terrain_stream` is where it actually fired -- "Entity
             // despawned: the entity with ID 404v0 is invalid" -- and the other
             // three carried the same race latently.
-            commands.entity(entity).try_insert((
-                Mesh3d(chunk.0.clone()),
-                MeshMaterial3d(look.terrain.clone()),
-                Transform::default(),
-            ));
+            commands
+                .entity(entity)
+                .try_insert((
+                    Mesh3d(chunk.0.clone()),
+                    MeshMaterial3d(look.terrain.clone()),
+                    Transform::default(),
+                ))
+                .try_remove::<(RigidBody, Collider)>();
             continue;
         };
         commands.entity(entity).try_insert((

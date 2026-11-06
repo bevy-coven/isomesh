@@ -59,8 +59,10 @@ fn main() -> Result<(), isomesh::Error> {
 
 // The plugin stops at a `Handle<Mesh>` on purpose. Attaching `Mesh3d` is the
 // application's line to write, and that boundary is what keeps a CPU-only
-// consumer from ever compiling the renderer.
-fn attach(meshes: Query<(Entity, &ChunkMesh), Without<Mesh3d>>, mut commands: Commands) {
+// consumer from ever compiling the renderer. `Changed<ChunkMesh>` fires on the
+// first mesh and on every re-mesh after an edit; `Without<Mesh3d>` would draw
+// the first mesh forever.
+fn attach(meshes: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>, mut commands: Commands) {
     for (entity, chunk_mesh) in &meshes {
         commands.entity(entity).insert(Mesh3d(chunk_mesh.0.clone()));
     }

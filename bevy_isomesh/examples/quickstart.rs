@@ -91,18 +91,23 @@ fn setup(mut commands: Commands) {
 
 /// Give each finished chunk mesh something to render with.
 ///
-/// `Without<Mesh3d>` is what keeps this from re-inserting every frame; a chunk
-/// that is re-meshed after an edit gets a new [`ChunkMesh`] and comes back
-/// through here once.
+/// `Changed<ChunkMesh>` fires once when a chunk's first mesh lands and once
+/// each time an edit re-meshes it, because the plugin replaces `ChunkMesh` and
+/// never touches `Mesh3d`. Filtering on `Without<Mesh3d>` instead would skip the
+/// chunk after its first attach and keep drawing (and holding) its first mesh.
+/// The material is made once and shared, so a re-mesh adds no asset.
 fn attach(
-    meshes: Query<(Entity, &ChunkMesh), Without<Mesh3d>>,
+    meshes: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut material: Local<Option<Handle<StandardMaterial>>>,
     mut commands: Commands,
 ) {
     for (entity, chunk_mesh) in &meshes {
-        commands.entity(entity).insert((
-            Mesh3d(chunk_mesh.0.clone()),
-            MeshMaterial3d(materials.add(Color::srgb(0.8, 0.7, 0.6))),
-        ));
+        let material = material
+            .get_or_insert_with(|| materials.add(Color::srgb(0.8, 0.7, 0.6)))
+            .clone();
+        commands
+            .entity(entity)
+            .insert((Mesh3d(chunk_mesh.0.clone()), MeshMaterial3d(material)));
     }
 }

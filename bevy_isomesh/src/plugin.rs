@@ -41,11 +41,13 @@
 //! # What this does not do
 //!
 //! It produces a [`Handle`](bevy_asset::Handle)`<Mesh>` on [`ChunkMesh`] and
-//! stops there. Attaching a
-//! render component is the application's job, because `Mesh3d` lives behind
-//! `bevy_render` and this crate is built on leaf crates so that a consumer doing
-//! CPU-only meshing never compiles the renderer. One line in the consumer buys
-//! that, and the examples show it.
+//! stops there. Attaching a render component is the application's job, so
+//! that a consumer doing CPU-only meshing (colliders, a server, a bake step)
+//! decides for itself what, if anything, draws the mesh. The plugin replaces
+//! `ChunkMesh` on every re-mesh and never touches `Mesh3d`, so the attach is
+//! filtered on `Changed<ChunkMesh>`, which fires on the first mesh and on each
+//! one after; a `Without<Mesh3d>` filter would draw the first mesh forever
+//! (issue #16). The README's quick start is that one system.
 
 use std::collections::HashMap;
 use std::sync::Arc;

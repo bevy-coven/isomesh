@@ -1100,3 +1100,68 @@ fn a_chunk_that_gains_or_loses_its_surface_gets_a_fresh_mesh_with_the_matching_u
     drain_until(&mut app, |app| live(app) == 0);
     assert_eq!(live(&app), 0, "a replaced mesh outlived its handle");
 }
+
+use bevy_mesh::Mesh3d;
+
+/// The attach system `README.md` hands every consumer, verbatim. The plugin
+/// stops at [`ChunkMesh`]; this is the line that turns it into what is drawn.
+fn attach(meshes: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>, mut commands: Commands) {
+    for (entity, chunk_mesh) in &meshes {
+        commands.entity(entity).insert(Mesh3d(chunk_mesh.0.clone()));
+    }
+}
+
+/// Every chunk's drawn mesh next to its published one, sorted by chunk id.
+fn drawn(app: &mut App) -> Vec<(ChunkId, AssetId<Mesh>, Option<AssetId<Mesh>>)> {
+    let mut rows: Vec<_> = app
+        .world_mut()
+        .query::<(&VoxelChunk, &ChunkMesh, Option<&Mesh3d>)>()
+        .iter(app.world())
+        .map(|(chunk, published, drawn)| (chunk.id, published.0.id(), drawn.map(|m| m.0.id())))
+        .collect();
+    rows.sort_by_key(|row| row.0);
+    rows
+}
+
+#[test]
+fn the_readme_attach_draws_the_mesh_a_chunk_was_re_meshed_to() {
+    // #16. The plugin replaces `ChunkMesh` on a re-mesh and never touches
+    // `Mesh3d`, so an attach filtered on `Without<Mesh3d>` skips the chunk
+    // forever after its first mesh: the old surface stays on screen and its
+    // handle keeps the old asset alive.
+    let (mut app, volume) = meshed_edit_app();
+    app.add_systems(Update, attach);
+    app.update();
+    let before = drawn(&mut app);
+    for &(id, published, drawn) in &before {
+        assert_eq!(drawn, Some(published), "{id:?} draws its first mesh");
+    }
+
+    // Move the sphere from chunk 0 into chunk 2: both are re-meshed.
+    edit(
+        &mut app,
+        volume,
+        Sphere::<f32> {
+            center: [5.0, 1.0, 1.0],
+            radius: 0.5,
+        },
+    );
+    drain_until(&mut app, |app| {
+        let rows = drawn(app);
+        rows[0].1 != before[0].1 && rows[2].1 != before[2].1
+    });
+    // One more frame, so an attach ordered anywhere in `Update` has seen the
+    // last replacement.
+    app.update();
+
+    let after = drawn(&mut app);
+    assert_ne!(after[0].1, before[0].1, "chunk 0 was never re-published");
+    assert_ne!(after[2].1, before[2].1, "chunk 2 was never re-published");
+    for &(id, published, drawn) in &after {
+        assert_eq!(
+            drawn,
+            Some(published),
+            "{id:?} must draw the mesh it was re-meshed to, not its first one"
+        );
+    }
+}

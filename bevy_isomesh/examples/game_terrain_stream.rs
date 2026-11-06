@@ -245,7 +245,7 @@ fn stream(mut commands: Commands, mut world: ResMut<World>, mut loaded: ResMut<L
 fn attach_meshes(
     mut commands: Commands,
     material: Res<Terrain>,
-    fresh: Query<(Entity, &ChunkMesh), Without<Mesh3d>>,
+    fresh: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>,
 ) {
     for (entity, mesh) in &fresh {
         // `try_insert`, not `insert`, and this is not a swallowed error. The

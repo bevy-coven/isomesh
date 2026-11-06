@@ -251,7 +251,7 @@ fn stream(mut commands: Commands, mut walk: ResMut<Walk>, mut loaded: ResMut<Loa
 fn attach_meshes(
     mut commands: Commands,
     look: Res<Look>,
-    fresh: Query<(Entity, &ChunkMesh), Without<Mesh3d>>,
+    fresh: Query<(Entity, &ChunkMesh), Changed<ChunkMesh>>,
 ) {
     for (entity, mesh) in &fresh {
         // `try_insert`, not `insert`, and this is not a swallowed error. The
