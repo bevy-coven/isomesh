@@ -189,6 +189,23 @@ while read -r demo; do
 done < <(sed -n '/^DEMOS=($/,/^)$/p' scripts/build_web.sh | grep -oE '^ +[a-z_]+$' |
     tr -d ' ' || true)
 
+# --- the dependency hard rule 3 names ----------------------------------------
+#
+# Issue #14: rule 3 said `glam` for months while `crates/isomesh/Cargo.toml`
+# declared `libm` and the rest of `CLAUDE.md` said glam was not wanted. Rule 3
+# is the line an agent cites when it adds a dependency, so the name in it is
+# compared with the manifest rather than left to a reader. Both sides are
+# derived; a side that cannot be derived fails, because a blind gate passes.
+CORE_DEPS=$(awk '/^\[dependencies\]/{f=1;next} /^\[/{f=0} f && /^[a-z_-]+ *=/{print $1}' \
+    crates/isomesh/Cargo.toml | sort | paste -sd, -)
+RULE3_DEP=$(grep -oE 'Nothing goes in `crates/isomesh/Cargo.toml` `\[dependencies\]` except `[a-z_-]+`' \
+    CLAUDE.md | head -1 | sed -E 's/.*except `([a-z_-]+)`$/\1/')
+if [ -z "$CORE_DEPS" ] || [ -z "$RULE3_DEP" ]; then
+    problem "cannot derive hard rule 3's dependency or crates/isomesh [dependencies] — the text moved and this gate is blind"
+elif [ "$RULE3_DEP" != "$CORE_DEPS" ]; then
+    problem "CLAUDE.md hard rule 3 names '$RULE3_DEP'; crates/isomesh [dependencies] is '$CORE_DEPS'"
+fi
+
 # --- media referenced but absent ----------------------------------------------
 #
 # A broken image is worse than a missing section: it renders as alt text and a

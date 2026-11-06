@@ -146,9 +146,11 @@ pristine. The cost is no `cargo test --workspace` across the boundary — run bo
    breach of it. CI enforces the two checkable forms: comment-stripped manifests must not name bevy,
    and non-comment `.rs` lines must not either. The strong form is unchanged:
    `cargo metadata --format-version 1 | grep -c '"name":"bevy'` → 0.
-3. **Nothing goes in `crates/isomesh/Cargo.toml` `[dependencies]` except `glam`** without a written
+3. **Nothing goes in `crates/isomesh/Cargo.toml` `[dependencies]` except `libm`** without a written
    justification added to this file in the same commit. The pitch is "as light as possible"; every dep
-   is a decision, not a convenience. Justifications live in the section below.
+   is a decision, not a convenience. Justifications live in the section below (`libm`'s is there, and
+   so is why `glam` is not declared). `scripts/doc_facts.sh` fails when the name in this rule and the
+   manifest disagree.
 4. **Never claim a performance number without the benchmark that produced it, in the repo.** The
    research docs list several published figures that failed verification. Don't add to the pile.
 5. **Never guess algorithm details.** The papers are indexed in home-still and summarized in
