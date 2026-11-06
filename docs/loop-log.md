@@ -227,3 +227,34 @@ Then iteration 0's items: B-020 avian demos, the Metal mesh-shader probe, this m
 5. **A storable edit list for bevy_emerge's F5** (the Volume tool: a volume as a list of SDF primitives and operations, one undo step per carve); read `gh issue view 101 -R Ladvien/bevy_emerge` and Sanctuary's `isowall` first.
 
 Then iteration 0's items: B-020 avian demos, the Metal mesh-shader probe, this machine's regression baseline. **Release:** the window (6 h after `v0.0.13`, 03:01:52 -05:00) opens at 09:01 -05:00.
+
+## Iteration 6 — 2026-11-06 — a re-meshed chunk draws its new mesh (#16), and hard rule 3 names `libm` (#14)
+
+**Hand-driven, owner request 2026-11-06, host mac_air.** Not a Wiggum pass: the owner asked each Coven repo's session to take its top open issues in order, so this one took #16 then #14, and skipped the loop's bookkeeping (no `loop/iter-N` branch; commits go to `main`).
+
+**Why #16 first.** It is the only open bug that changes what a game draws (iteration 5's ranked item 1); #14 is a one-line rule text and a gate. Triage was the owner's list; no other issue was opened.
+
+**#16, what changed.** The README's quick start, `quickstart`, `game_walk`, `game_showcase`, `game_terrain_stream` and `game_capsule_walk` attached `Mesh3d` on `Without<Mesh3d>`, which the plugin's replaced `ChunkMesh` never passes again. All six now filter on `Changed<ChunkMesh>`. `quickstart` makes its material once (a `Local`), not once per attach; `game_capsule_walk` removes `(RigidBody, Collider)` when an edit re-meshes a chunk to empty, which the old filter could never reach. The `plugin` module doc lost its claim that `Mesh3d` is behind `bevy_render` (it is `bevy_mesh::Mesh3d` in 0.20). New test `plugin::tests::the_readme_attach_draws_the_mesh_a_chunk_was_re_meshed_to`, using `meshed_edit_app` / `edit` / `drain_until`. FINDINGS M-501.
+
+**#14, what changed.** `CLAUDE.md` rule 3 says `libm`; `scripts/doc_facts.sh` compares the name in rule 3 with `crates/isomesh` `[dependencies]` and also fails when either side cannot be read. FINDINGS M-500.
+
+**Sources.** Bevy 0.20 `Changed<T>` rustdoc (`bevy_ecs-0.20.0/src/query/filter.rs`: "only retains results the first time after they have been added or mutably dereferenced"; also: not an archetype filter, so every chunk is visited each frame) and `bevy_mesh-0.20.0/src/components.rs:103` for `Mesh3d`. No paper bears on a change-detection filter, so no research note and no home-still query this pass.
+
+**Evidence.**
+
+| Check | Before | After |
+|---|---|---|
+| `the_readme_attach_draws_the_mesh_a_chunk_was_re_meshed_to` with the README's filter | fails: chunk `[0, 0, 0]` draws asset index 0, its `ChunkMesh` is index 4 | passes with `Changed<ChunkMesh>` |
+| `doc_facts.sh` with the issue's check | exit 1: "CLAUDE.md hard rule 3 names 'glam'; crates/isomesh [dependencies] is 'libm'" | exit 0 |
+
+**Not done here.** No example was run (compiled only, by `bevy: check --all-targets`); no GIF moves, since a static quick start looks the same under either filter. `root: test`, `gpu: test` and the MSRV step of `preflight.sh --full` were not run: this pass changes no file under `crates/` (`git diff v0.0.13 -- crates/` holds only iteration 5's, which CI ran green on PR #19), iteration 5's gate hit its 3600 s timeout inside the debug `cargo test -p isomesh --lib golden` on this host, and another session shared the build directory throughout (the first test build waited 13 min on its lock).
+
+**Critique and verdict.** `Changed<ChunkMesh>` costs a visit per chunk per frame where the old filter cost none after the first; not timed, recorded in M-501. The test copies the README's system rather than reading it, so a README edit that reintroduces `Without<Mesh3d>` would still need the doctest reader to notice; the snippet now says why in a comment. **GREAT** for both: each issue's failing check fails before and passes after, and nothing else moved.
+
+### Ranked backlog
+
+1. **A bench and a caller-provided scratch for marking** (iteration 5's item 3).
+2. **Is the corner rule exact for Dual Contouring and Surface Nets?** (iteration 5's item 4).
+3. **A storable edit list for bevy_emerge's F5** (iteration 5's item 5).
+4. **Run `quickstart` and a carve example on Metal with the new attach**, and time the `Changed<ChunkMesh>` visit at a few thousand chunks.
+5. Iteration 0's items: B-020 avian demos, the Metal mesh-shader probe, this machine's regression baseline.
